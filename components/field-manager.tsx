@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Search, FileText, CheckCircle, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-interface IdentifiedField {
+export interface IdentifiedField {
   name: string
   type: string
   description: string
@@ -91,12 +91,11 @@ export default function FieldManager({
       const { analysis } = await response.json()
 
       try {
-        const parsedResponse = JSON.parse(analysis)
-        if (parsedResponse.fields && Array.isArray(parsedResponse.fields)) {
-          onFieldsIdentified(parsedResponse.fields)
+        if (analysis.fields && Array.isArray(analysis.fields)) {
+          onFieldsIdentified(analysis.fields)
           toast({
             title: "Analysis Complete",
-            description: `Found ${parsedResponse.fields.length} fillable fields`,
+            description: `Found ${analysis.fields.length} fillable fields`,
           })
         } else {
           throw new Error("Invalid response format")

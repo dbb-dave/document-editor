@@ -8,7 +8,7 @@ import FileUploader from "./components/file-uploader"
 import DocumentRenderer from "./components/document-renderer"
 import ChatInterface from "./components/chat-interface"
 import { useToast } from "@/hooks/use-toast"
-import FieldManager from "./components/field-manager"
+import FieldManager, { IdentifiedField } from "./components/field-manager"
 
 export default function DocumentEditor() {
   const [docxContent, setDocxContent] = useState<ArrayBuffer | null>(null)
@@ -16,9 +16,7 @@ export default function DocumentEditor() {
   const [isEditing, setIsEditing] = useState(false)
   const { toast } = useToast()
 
-  const [identifiedFields, setIdentifiedFields] = useState<Array<{ name: string; type: string; description: string }>>(
-    [],
-  )
+  const [identifiedFields, setIdentifiedFields] = useState<IdentifiedField[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const handleFileUpload = async (file: File) => {
