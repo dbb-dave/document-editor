@@ -1,6 +1,7 @@
-import { generateText } from "ai"
+import { generateObject } from "ai"
 import { createOpenAI } from "@ai-sdk/openai"
 import { type NextRequest, NextResponse } from "next/server"
+import z from "zod"
 
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -14,9 +15,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Document text is required" }, { status: 400 })
     }
 
-    const { text } = await generateText({
+    const { object: analysis } = await generateObject({
       model: openai("gpt-4o"),
-      prompt: `Analyze this document and identify all fillable fields that would typically need to be completed by a user. 
+      schema: z.object({
+        fields: z.array(z.object({
+          name: z.string(),
+          type: z.string(),
+          description: z.string(),
+          placeholder: z.string(),
+          required: z.boolean(),
+        })),
+      }),
+      prompt: `
+Analyze this document and identify all fillable fields that would typically need to be completed by a user. 
 
 Document content:
 ${documentText}
@@ -43,12 +54,13 @@ For each field found, provide a JSON response in this exact format:
   ]
 }
 
-Only return the JSON, no other text.`,
+Only return the JSON, no other text.
+`,
       system:
         "You are a document analysis expert. Analyze documents to identify fillable fields that users would need to complete. Return only valid JSON.",
     })
 
-    return NextResponse.json({ analysis: text })
+    return NextResponse.json({ analysis })
   } catch (error) {
     console.error("Error analyzing document:", error)
     return NextResponse.json({ error: "Failed to analyze document" }, { status: 500 })
