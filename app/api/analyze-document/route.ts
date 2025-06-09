@@ -41,7 +41,8 @@ For each field found, provide a JSON response in this exact format:
       "type": "text|number|date|email|phone|address|checkbox",
       "description": "Brief description of what this field is for",
       "placeholder": "[[FIELD_NAME]]",
-      "required": true|false
+      "required": true|false,
+      "replacement": "text that can be used to find and replace the field in the document, include whitespace, underscores, etc. everything to make as precise as possible"
     }
   ]
 }

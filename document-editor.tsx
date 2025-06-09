@@ -9,6 +9,7 @@ import DocumentRenderer from "./components/document-renderer";
 import ChatInterface from "./components/chat-interface";
 import { useToast } from "@/hooks/use-toast";
 import FieldManager from "./components/field-manager";
+import { IdentifiedField } from "./components/field-manager";
 
 export default function DocumentEditor() {
   const [docxContent, setDocxContent] = useState<ArrayBuffer | null>(null);
@@ -17,13 +18,7 @@ export default function DocumentEditor() {
   const { toast } = useToast();
 
   const [identifiedFields, setIdentifiedFields] = useState<
-    Array<{
-      name: string;
-      type: string;
-      description: string;
-      placeholder: string;
-      required: boolean;
-    }>
+    Array<IdentifiedField>
   >([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 

@@ -9,13 +9,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-interface IdentifiedField {
+export type IdentifiedField = {
   name: string;
   type: string;
   description: string;
   placeholder: string;
   required: boolean;
-}
+  replacement: string;
+};
 
 interface FieldManagerProps {
   docxContent: ArrayBuffer | null;
@@ -147,17 +148,15 @@ export default function FieldManager({
 
       // Replace identified field content with placeholders
       identifiedFields.forEach((field) => {
-        // This is a simplified replacement - in a real implementation,
-        // you'd want more sophisticated text matching
-        const patterns = [
-          new RegExp(`\\b${field.name}\\b`, "gi"),
-          /_+/g, // Replace underlines commonly used for fill-in fields
-          /\.{3,}/g, // Replace dots used for fill-in fields
-        ];
-
-        patterns.forEach((pattern) => {
-          content = content.replace(pattern, field.placeholder);
-        });
+        // Clean up the field replacement text itself (remove underscores, dashes, etc)
+        const cleanFieldReplacement = field.replacement
+          .replace(/[_\-]+/g, "")
+          .trim();
+        // Apply new placeholder using the cleaned field text
+        content = content.replace(
+          field.replacement,
+          `${cleanFieldReplacement} ${field.placeholder}`
+        );
       });
 
       // Update the document content
