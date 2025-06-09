@@ -141,7 +141,6 @@ export default function DocumentEditor() {
           <TabsContent value="fields" className="flex-1 flex flex-col">
             <FieldManager
               docxContent={docxContent}
-              fileName={fileName}
               onFieldsIdentified={setIdentifiedFields}
               identifiedFields={identifiedFields}
               isAnalyzing={isAnalyzing}

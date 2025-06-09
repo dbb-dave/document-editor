@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,10 +14,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import debounce from "lodash/debounce";
-
-// Document cache
-const documentCache = new Map<string, string>();
 
 // Types
 export type IdentifiedField = {
@@ -27,44 +23,22 @@ export type IdentifiedField = {
   placeholder: string;
   required: boolean;
   replacement: string;
-  confidence?: "high" | "low";
-  originalType?: string;
   relationships?: string[];
 };
 
 interface FieldManagerProps {
   docxContent: ArrayBuffer | null;
-  fileName: string;
   onFieldsIdentified: (fields: IdentifiedField[]) => void;
   identifiedFields: IdentifiedField[];
   isAnalyzing: boolean;
   setIsAnalyzing: (analyzing: boolean) => void;
 }
 
-// Document processing utilities
-const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
-
-const splitArrayBuffer = (
-  buffer: ArrayBuffer,
-  chunkSize: number
-): ArrayBuffer[] => {
-  const chunks: ArrayBuffer[] = [];
-  let offset = 0;
-
-  while (offset < buffer.byteLength) {
-    const chunk = buffer.slice(offset, offset + chunkSize);
-    chunks.push(chunk);
-    offset += chunkSize;
-  }
-
-  return chunks;
-};
-
-const processDocumentChunk = async (chunk: ArrayBuffer): Promise<string> => {
+const processDocument = async (docxContent: ArrayBuffer): Promise<string> => {
   const { renderAsync } = await import("docx-preview");
   const tempContainer = document.createElement("div");
 
-  await renderAsync(chunk, tempContainer, undefined, {
+  await renderAsync(docxContent, tempContainer, undefined, {
     inWrapper: false,
     ignoreWidth: true,
     ignoreHeight: true,
@@ -73,25 +47,7 @@ const processDocumentChunk = async (chunk: ArrayBuffer): Promise<string> => {
   return tempContainer.textContent || tempContainer.innerText || "";
 };
 
-const getCachedDocument = async (
-  docxContent: ArrayBuffer,
-  fileName: string
-): Promise<string> => {
-  const cacheKey = `${fileName}-${docxContent.byteLength}`;
-
-  if (documentCache.has(cacheKey)) {
-    return documentCache.get(cacheKey)!;
-  }
-
-  const chunks = splitArrayBuffer(docxContent, CHUNK_SIZE);
-  const processedChunks = await Promise.all(chunks.map(processDocumentChunk));
-
-  const processedText = processedChunks.join("");
-  documentCache.set(cacheKey, processedText);
-  return processedText;
-};
-
-const applyPlaceholdersOptimized = (
+const applyPlaceholders = (
   content: string,
   fields: IdentifiedField[]
 ): string => {
@@ -111,7 +67,6 @@ const applyPlaceholdersOptimized = (
 
 export default function FieldManager({
   docxContent,
-  fileName,
   onFieldsIdentified,
   identifiedFields,
   isAnalyzing,
@@ -121,26 +76,12 @@ export default function FieldManager({
   const [placeholdersApplied, setPlaceholdersApplied] = useState(false);
   const { toast } = useToast();
 
-  // Memoized field type icons
-  const fieldTypeIcons = useMemo(
-    () => ({
-      date: "📅",
-      email: "📧",
-      phone: "📞",
-      address: "🏠",
-      number: "🔢",
-      checkbox: "☑️",
-      text: "📝",
-    }),
-    []
-  );
-
   useEffect(() => {
     const extractDocumentText = async () => {
       if (!docxContent) return;
 
       try {
-        const text = await getCachedDocument(docxContent, fileName);
+        const text = await processDocument(docxContent);
         setDocumentText(text);
       } catch (error) {
         console.error("Error extracting document text:", error);
@@ -153,16 +94,7 @@ export default function FieldManager({
     };
 
     extractDocumentText();
-
-    // Cleanup
-    return () => {
-      if (documentCache.size > 100) {
-        // Prevent unlimited cache growth
-        const keysToDelete = Array.from(documentCache.keys()).slice(0, 50);
-        keysToDelete.forEach((key) => documentCache.delete(key));
-      }
-    };
-  }, [docxContent, fileName, toast]);
+  }, [docxContent, toast]);
 
   const analyzeDocument = useCallback(async () => {
     if (!documentText) {
@@ -197,7 +129,7 @@ export default function FieldManager({
         onFieldsIdentified(object.fields);
         toast({
           title: "Analysis Complete",
-          description: `Found ${object.fields.length} fillable fields in ${object.metadata.totalChunks} chunks (${object.metadata.processingTime}ms)`,
+          description: `Found ${object.fields.length} fillable fields (${object.metadata.processingTime}ms)`,
         });
       } else {
         throw new Error("Invalid response format");
@@ -214,13 +146,7 @@ export default function FieldManager({
     }
   }, [documentText, onFieldsIdentified, setIsAnalyzing, toast]);
 
-  // Debounced analysis
-  const debouncedAnalyze = useMemo(
-    () => debounce(analyzeDocument, 500),
-    [analyzeDocument]
-  );
-
-  const applyPlaceholders = useCallback(async () => {
+  const handleApplyPlaceholders = useCallback(async () => {
     if (identifiedFields.length === 0) {
       toast({
         title: "No Fields",
@@ -244,10 +170,7 @@ export default function FieldManager({
       if (!documentContainer) return;
 
       const content = documentContainer.innerHTML;
-      const updatedContent = applyPlaceholdersOptimized(
-        content,
-        identifiedFields
-      );
+      const updatedContent = applyPlaceholders(content, identifiedFields);
 
       documentContainer.innerHTML = updatedContent;
       setPlaceholdersApplied(true);
@@ -266,15 +189,18 @@ export default function FieldManager({
     }
   }, [identifiedFields, placeholdersApplied, toast]);
 
-  const getFieldTypeIcon = useCallback(
-    (type: string) => {
-      return (
-        fieldTypeIcons[type as keyof typeof fieldTypeIcons] ||
-        fieldTypeIcons.text
-      );
-    },
-    [fieldTypeIcons]
-  );
+  const getFieldTypeIcon = useCallback((type: string) => {
+    const icons = {
+      date: "📅",
+      email: "📧",
+      phone: "📞",
+      address: "🏠",
+      number: "🔢",
+      checkbox: "☑️",
+      text: "📝",
+    };
+    return icons[type as keyof typeof icons] || icons.text;
+  }, []);
 
   return (
     <div className="flex flex-col h-screen">
@@ -288,7 +214,7 @@ export default function FieldManager({
       <div className="flex-1 overflow-hidden flex flex-col">
         <div className="p-4">
           <Button
-            onClick={() => debouncedAnalyze()}
+            onClick={analyzeDocument}
             disabled={isAnalyzing || !docxContent}
             className="w-full mb-4"
           >
@@ -307,7 +233,7 @@ export default function FieldManager({
 
           {identifiedFields.length > 0 && (
             <Button
-              onClick={applyPlaceholders}
+              onClick={handleApplyPlaceholders}
               variant="outline"
               className="w-full mb-4"
               disabled={placeholdersApplied}
@@ -346,16 +272,8 @@ export default function FieldManager({
                       <h4 className="font-medium text-sm">{field.name}</h4>
                     </div>
                     <div className="flex gap-1">
-                      <Badge
-                        variant={
-                          field.confidence === "low" ? "outline" : "secondary"
-                        }
-                        className="text-xs"
-                      >
+                      <Badge variant="secondary" className="text-xs">
                         {field.type}
-                        {field.originalType &&
-                          field.type !== field.originalType &&
-                          ` (was ${field.originalType})`}
                       </Badge>
                       {field.required && (
                         <Badge variant="destructive" className="text-xs">
