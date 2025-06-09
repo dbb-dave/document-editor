@@ -23,7 +23,6 @@ export type IdentifiedField = {
   placeholder: string;
   required: boolean;
   replacement: string;
-  relationships?: string[];
 };
 
 interface FieldManagerProps {
@@ -263,8 +262,8 @@ export default function FieldManager({
                 Identified Fields ({identifiedFields.length})
               </h3>
               {identifiedFields.map((field, index) => (
-                <Card key={index} className="p-3 flex flex-col gap-2">
-                  <div className="flex items-start justify-between">
+                <Card key={index} className="p-3 flex flex-col gap-2 w-full">
+                  <div className="flex items-start">
                     <div className="flex items-center">
                       <span className="mr-2">
                         {getFieldTypeIcon(field.type)}
