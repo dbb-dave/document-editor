@@ -202,7 +202,7 @@ export default function FieldManager({
   }, []);
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col max-h-[calc(100vh-4rem)]">
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold flex items-center">
           <FileText className="mr-2 h-5 w-5" />
@@ -247,7 +247,7 @@ export default function FieldManager({
 
         <Separator />
 
-        <ScrollArea className="flex-1 p-4">
+        <ScrollArea className="flex-1 p-4 overflow-auto">
           {identifiedFields.length === 0 ? (
             <div className="text-center text-gray-500 mt-8">
               <AlertCircle className="mx-auto h-12 w-12 mb-4 opacity-50" />
@@ -262,28 +262,37 @@ export default function FieldManager({
                 Identified Fields ({identifiedFields.length})
               </h3>
               {identifiedFields.map((field, index) => (
-                <Card key={index} className="p-3 flex flex-col gap-2 w-full">
-                  <div className="flex items-start">
-                    <div className="flex items-center">
-                      <span className="mr-2">
+                <Card key={index} className="p-3">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="flex-shrink-0">
                         {getFieldTypeIcon(field.type)}
                       </span>
-                      <h4 className="font-medium text-sm">{field.name}</h4>
+                      <h4 className="font-medium text-sm truncate">
+                        {field.name}
+                      </h4>
                     </div>
-                    <div className="flex gap-1">
-                      <Badge variant="secondary" className="text-xs">
+                    <div className="flex flex-wrap gap-1">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs whitespace-nowrap"
+                      >
                         {field.type}
                       </Badge>
                       {field.required && (
-                        <Badge variant="destructive" className="text-xs">
+                        <Badge
+                          variant="destructive"
+                          className="text-xs whitespace-nowrap"
+                        >
                           Required
                         </Badge>
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-600">{field.description}</p>
-
-                  <code className="text-xs bg-gray-100 px-2 py-1 rounded w-fit">
+                  <p className="text-xs text-gray-600 mt-2">
+                    {field.description}
+                  </p>
+                  <code className="text-xs bg-gray-100 px-2 py-1 rounded mt-2 inline-block">
                     {field.placeholder}
                   </code>
                 </Card>
