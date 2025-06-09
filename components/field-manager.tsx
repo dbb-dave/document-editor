@@ -149,11 +149,8 @@ export default function FieldManager({
 
       let content = documentContainer.innerHTML;
 
-      console.log("identifiedFields", identifiedFields);
-
       // Replace identified field content with placeholders
       identifiedFields.forEach((field) => {
-        // Apply new placeholder using the cleaned field text
         content = content.replace(
           field.replacement,
           `${field.replacement} ${field.placeholder}`
