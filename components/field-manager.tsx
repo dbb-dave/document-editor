@@ -36,6 +36,7 @@ export default function FieldManager({
   setIsAnalyzing,
 }: FieldManagerProps) {
   const [documentText, setDocumentText] = useState<string>("");
+  const [placeholdersApplied, setPlaceholdersApplied] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -139,6 +140,15 @@ export default function FieldManager({
       return;
     }
 
+    if (placeholdersApplied) {
+      toast({
+        title: "Placeholders Already Applied",
+        description: "Placeholders have already been applied to this document",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Get the current document content from the editor
       const documentContainer = document.querySelector(".document-container");
@@ -161,6 +171,7 @@ export default function FieldManager({
 
       // Update the document content
       documentContainer.innerHTML = content;
+      setPlaceholdersApplied(true);
 
       toast({
         title: "Placeholders Applied",
@@ -220,9 +231,12 @@ export default function FieldManager({
               onClick={applyPlaceholders}
               variant="outline"
               className="w-full mb-4"
+              disabled={placeholdersApplied}
             >
               <CheckCircle className="mr-2 h-4 w-4" />
-              Apply Placeholders
+              {placeholdersApplied
+                ? "Placeholders Applied"
+                : "Apply Placeholders"}
             </Button>
           )}
         </div>
