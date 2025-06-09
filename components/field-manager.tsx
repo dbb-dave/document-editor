@@ -174,11 +174,6 @@ export default function FieldManager({
       return;
     }
 
-    // clean document text from placeholders
-    const cleanedDocumentText = documentText.replace(/\[\[.*?\]\]/g, "");
-
-    setDocumentText(cleanedDocumentText);
-
     setIsAnalyzing(true);
 
     try {
@@ -189,7 +184,7 @@ export default function FieldManager({
           "Content-Type": "application/json",
           "x-request-start": startTime.toString(),
         },
-        body: JSON.stringify({ documentText: cleanedDocumentText }),
+        body: JSON.stringify({ documentText }),
       });
 
       if (!response.ok) {
