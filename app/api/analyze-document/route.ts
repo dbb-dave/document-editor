@@ -32,32 +32,23 @@ export async function POST(request: NextRequest) {
           })
         ),
       }),
-      prompt: `Analyze this document and identify all fillable fields that would typically need to be completed by a user. 
+      system:
+        "You are a specialized document field extraction AI. Your task is to identify and structure fillable fields from documents. Follow these rules strictly: 1) Only extract fields that require user input 2) Maintain field context and relationships 3) Return structured JSON matching the defined schema 4) Do not make assumptions about optional fields",
+      prompt: `Extract fillable fields from this document:
 
-Document content:
 ${documentText}
 
-Please identify fields, take note that some fields may have a legend, which should be included in the name and replacement. 
-Some examples of fields that should be identified are, but not limited to:
-- Names (first name, last name, full name)
-- Addresses (street, city, state, zip)
-- Contact information (phone, email)
-- Dates (birth date, signature date, etc.)
-- Numbers (SSN, ID numbers, amounts)
-- Text fields (descriptions, comments)
-- Checkboxes or selections
+Instructions:
+1. Identify all user-input fields (names, addresses, contact info, dates, numbers, text areas, checkboxes)
+2. For each field, provide:
+   - name: unique identifier (snake_case)
+   - type: text|number|date|email|phone|address|checkbox
+   - description: field purpose (1-2 words)
+   - placeholder: [[FIELD_NAME]]
+   - required: true|false
+   - replacement: text that can be used to find and replace the field in the document
 
-For each field, this what the information should be: 
-{
-  "name": "field_name",
-  "type": "text|number|date|email|phone|address|checkbox",
-  "description": "Brief description of what this field is for",
-  "placeholder": "[[FIELD_NAME]]",
-  "required": true|false,
-  "replacement": "text that can be used to find and replace the field in the document, include whitespace, underscores, etc. everything to make as precise as possible"
-}`,
-      system:
-        "You are a document analysis expert. Analyze documents to identify fillable fields that users would need to complete. Return only valid JSON.",
+Note: Include field legends/context in replacement text for precise matching. (e.g. "Date of Birth: (mm-dd-yyyy)")`,
     });
 
     return NextResponse.json({ object });
