@@ -263,8 +263,8 @@ export default function FieldManager({
                 Identified Fields ({identifiedFields.length})
               </h3>
               {identifiedFields.map((field, index) => (
-                <Card key={index} className="p-3">
-                  <div className="flex items-start justify-between mb-2">
+                <Card key={index} className="p-3 flex flex-col gap-2">
+                  <div className="flex items-start justify-between">
                     <div className="flex items-center">
                       <span className="mr-2">
                         {getFieldTypeIcon(field.type)}
@@ -282,15 +282,9 @@ export default function FieldManager({
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-600 mb-2">
-                    {field.description}
-                  </p>
-                  {field.relationships && field.relationships.length > 0 && (
-                    <div className="text-xs text-gray-500 mb-2">
-                      Related to: {field.relationships.join(", ")}
-                    </div>
-                  )}
-                  <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                  <p className="text-xs text-gray-600">{field.description}</p>
+
+                  <code className="text-xs bg-gray-100 px-2 py-1 rounded w-fit">
                     {field.placeholder}
                   </code>
                 </Card>
