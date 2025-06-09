@@ -1,71 +1,77 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import FileUploader from "./components/file-uploader"
-import DocumentRenderer from "./components/document-renderer"
-import ChatInterface from "./components/chat-interface"
-import { useToast } from "@/hooks/use-toast"
-import FieldManager from "./components/field-manager"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import FileUploader from "./components/file-uploader";
+import DocumentRenderer from "./components/document-renderer";
+import ChatInterface from "./components/chat-interface";
+import { useToast } from "@/hooks/use-toast";
+import FieldManager from "./components/field-manager";
 
 export default function DocumentEditor() {
-  const [docxContent, setDocxContent] = useState<ArrayBuffer | null>(null)
-  const [fileName, setFileName] = useState<string>("")
-  const [isEditing, setIsEditing] = useState(false)
-  const { toast } = useToast()
+  const [docxContent, setDocxContent] = useState<ArrayBuffer | null>(null);
+  const [fileName, setFileName] = useState<string>("");
+  const [isEditing, setIsEditing] = useState(false);
+  const { toast } = useToast();
 
-  const [identifiedFields, setIdentifiedFields] = useState<Array<{ name: string; type: string; description: string }>>(
-    [],
-  )
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [identifiedFields, setIdentifiedFields] = useState<
+    Array<{
+      name: string;
+      type: string;
+      description: string;
+      placeholder: string;
+      required: boolean;
+    }>
+  >([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleFileUpload = async (file: File) => {
     try {
-      const buffer = await file.arrayBuffer()
-      setDocxContent(buffer)
-      setFileName(file.name)
+      const buffer = await file.arrayBuffer();
+      setDocxContent(buffer);
+      setFileName(file.name);
       toast({
         title: "Document loaded",
         description: `Successfully loaded ${file.name}`,
-      })
+      });
     } catch (error) {
-      console.error("Error reading file:", error)
+      console.error("Error reading file:", error);
       toast({
         title: "Error",
         description: "Failed to load document",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleExport = () => {
     // This will be implemented later for exporting the edited document
     toast({
       title: "Export",
       description: "Document export functionality will be implemented soon",
-    })
-  }
+    });
+  };
 
   const handleAutoFill = async () => {
-    if (!docxContent) return
+    if (!docxContent) return;
 
-    setIsAnalyzing(true)
+    setIsAnalyzing(true);
     try {
       // This will be handled by the FieldManager component
       // We'll pass the callback to update the identified fields
     } catch (error) {
-      console.error("Error during auto-fill analysis:", error)
+      console.error("Error during auto-fill analysis:", error);
       toast({
         title: "Error",
         description: "Failed to analyze document for auto-fill",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsAnalyzing(false)
+      setIsAnalyzing(false);
     }
-  }
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -76,10 +82,17 @@ export default function DocumentEditor() {
             <div className="flex gap-2">
               {docxContent && (
                 <>
-                  <Button variant="outline" onClick={handleAutoFill} disabled={isAnalyzing}>
+                  <Button
+                    variant="outline"
+                    onClick={handleAutoFill}
+                    disabled={isAnalyzing}
+                  >
                     {isAnalyzing ? "Analyzing..." : "Auto-Fill"}
                   </Button>
-                  <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditing(!isEditing)}
+                  >
                     {isEditing ? "View Mode" : "Edit Mode"}
                   </Button>
                   <Button onClick={handleExport}>Export</Button>
@@ -87,7 +100,11 @@ export default function DocumentEditor() {
               )}
             </div>
           </div>
-          {fileName && <p className="text-sm text-gray-500 mt-1">Current file: {fileName}</p>}
+          {fileName && (
+            <p className="text-sm text-gray-500 mt-1">
+              Current file: {fileName}
+            </p>
+          )}
         </header>
 
         <main className="flex-1 overflow-auto p-6">
@@ -102,7 +119,10 @@ export default function DocumentEditor() {
                 <TabsTrigger value="preview">Preview</TabsTrigger>
               </TabsList>
               <TabsContent value="document" className="h-[calc(100%-40px)]">
-                <DocumentRenderer docxContent={docxContent} isEditing={isEditing} />
+                <DocumentRenderer
+                  docxContent={docxContent}
+                  isEditing={isEditing}
+                />
               </TabsContent>
               <TabsContent value="preview" className="h-[calc(100%-40px)]">
                 <Card className="h-full p-6 overflow-auto">
@@ -136,5 +156,5 @@ export default function DocumentEditor() {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }

@@ -1,17 +1,20 @@
-import { generateText } from "ai"
-import { createOpenAI } from "@ai-sdk/openai"
-import { type NextRequest, NextResponse } from "next/server"
+import { generateText } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { type NextRequest, NextResponse } from "next/server";
 
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-})
+});
 
 export async function POST(request: NextRequest) {
   try {
-    const { documentText } = await request.json()
+    const { documentText } = await request.json();
 
     if (!documentText) {
-      return NextResponse.json({ error: "Document text is required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Document text is required" },
+        { status: 400 }
+      );
     }
 
     const { text } = await generateText({
@@ -46,11 +49,19 @@ For each field found, provide a JSON response in this exact format:
 Only return the JSON, no other text.`,
       system:
         "You are a document analysis expert. Analyze documents to identify fillable fields that users would need to complete. Return only valid JSON.",
-    })
+    });
 
-    return NextResponse.json({ analysis: text })
+    const analysis = text
+      .replace(/```json\n?/g, "") // Remove opening ```json
+      .replace(/```\n?/g, "") // Remove closing ```
+      .trim(); // Remove any extra whitespace
+
+    return NextResponse.json({ analysis });
   } catch (error) {
-    console.error("Error analyzing document:", error)
-    return NextResponse.json({ error: "Failed to analyze document" }, { status: 500 })
+    console.error("Error analyzing document:", error);
+    return NextResponse.json(
+      { error: "Failed to analyze document" },
+      { status: 500 }
+    );
   }
 }
