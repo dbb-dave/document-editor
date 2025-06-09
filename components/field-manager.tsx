@@ -91,21 +91,14 @@ export default function FieldManager({
         throw new Error("Failed to analyze document");
       }
 
-      const { analysis } = await response.json();
+      const { object } = await response.json();
 
       try {
-        // Clean up the response by removing markdown code block formatting
-        const cleanedAnalysis = analysis
-          .replace(/```json\n?/g, "") // Remove opening ```json
-          .replace(/```\n?/g, "") // Remove closing ```
-          .trim(); // Remove any extra whitespace
-
-        const parsedResponse = JSON.parse(cleanedAnalysis);
-        if (parsedResponse.fields && Array.isArray(parsedResponse.fields)) {
-          onFieldsIdentified(parsedResponse.fields);
+        if (object.fields && Array.isArray(object.fields)) {
+          onFieldsIdentified(object.fields);
           toast({
             title: "Analysis Complete",
-            description: `Found ${parsedResponse.fields.length} fillable fields`,
+            description: `Found ${object.fields.length} fillable fields`,
           });
         } else {
           throw new Error("Invalid response format");
@@ -156,16 +149,14 @@ export default function FieldManager({
 
       let content = documentContainer.innerHTML;
 
+      console.log("identifiedFields", identifiedFields);
+
       // Replace identified field content with placeholders
       identifiedFields.forEach((field) => {
-        // Clean up the field replacement text itself (remove underscores, dashes, etc)
-        const cleanFieldReplacement = field.replacement
-          .replace(/[_\-]+/g, "")
-          .trim();
         // Apply new placeholder using the cleaned field text
         content = content.replace(
           field.replacement,
-          `${cleanFieldReplacement} ${field.placeholder}`
+          `${field.replacement} ${field.placeholder}`
         );
       });
 
