@@ -1,196 +1,210 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, FileText, CheckCircle, AlertCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Search,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-interface IdentifiedField {
-  name: string
-  type: string
-  description: string
-  placeholder: string
-  required: boolean
-}
+// Types
+export type IdentifiedField = {
+  name: string;
+  type: string;
+  description: string;
+  placeholder: string;
+  required: boolean;
+  replacement: string;
+  confidence: string;
+  relationships: string[];
+};
 
 interface FieldManagerProps {
-  docxContent: ArrayBuffer | null
-  fileName: string
-  onFieldsIdentified: (fields: IdentifiedField[]) => void
-  identifiedFields: IdentifiedField[]
-  isAnalyzing: boolean
-  setIsAnalyzing: (analyzing: boolean) => void
+  docxContent: ArrayBuffer | null;
+  onFieldsIdentified: (fields: IdentifiedField[]) => void;
+  identifiedFields: IdentifiedField[];
+  isAnalyzing: boolean;
+  setIsAnalyzing: (analyzing: boolean) => void;
 }
+
+const processDocument = async (docxContent: ArrayBuffer): Promise<string> => {
+  const { renderAsync } = await import("docx-preview");
+  const tempContainer = document.createElement("div");
+
+  await renderAsync(docxContent, tempContainer, undefined, {
+    inWrapper: false,
+    ignoreWidth: true,
+    ignoreHeight: true,
+  });
+
+  return tempContainer.textContent || tempContainer.innerText || "";
+};
+
+const applyPlaceholders = (
+  content: string,
+  fields: IdentifiedField[]
+): string => {
+  const fieldMap = new Map(fields.map((f) => [f.replacement, f]));
+  const regex = new RegExp(
+    Array.from(fieldMap.keys())
+      .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|"),
+    "g"
+  );
+
+  return content.replace(
+    regex,
+    (match) => `${match} ${fieldMap.get(match)?.placeholder || ""}`
+  );
+};
 
 export default function FieldManager({
   docxContent,
-  fileName,
   onFieldsIdentified,
   identifiedFields,
   isAnalyzing,
   setIsAnalyzing,
 }: FieldManagerProps) {
-  const [documentText, setDocumentText] = useState<string>("")
-  const { toast } = useToast()
+  const [documentText, setDocumentText] = useState<string>("");
+  const [placeholdersApplied, setPlaceholdersApplied] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const extractDocumentText = async () => {
-      if (!docxContent) return
+      if (!docxContent) return;
 
       try {
-        // Import docx-preview to extract text content
-        const { renderAsync } = await import("docx-preview")
-        const tempContainer = document.createElement("div")
-
-        await renderAsync(docxContent, tempContainer, undefined, {
-          inWrapper: false,
-          ignoreWidth: true,
-          ignoreHeight: true,
-        })
-
-        // Extract plain text from the rendered HTML
-        const textContent = tempContainer.textContent || tempContainer.innerText || ""
-        setDocumentText(textContent)
+        const text = await processDocument(docxContent);
+        setDocumentText(text);
       } catch (error) {
-        console.error("Error extracting document text:", error)
+        console.error("Error extracting document text:", error);
+        toast({
+          title: "Error",
+          description: "Failed to process document",
+          variant: "destructive",
+        });
       }
-    }
+    };
 
-    extractDocumentText()
-  }, [docxContent])
+    extractDocumentText();
+  }, [docxContent, toast]);
 
-  const analyzeDocument = async () => {
+  const analyzeDocument = useCallback(async () => {
     if (!documentText) {
       toast({
         title: "No Document",
         description: "Please upload a document first",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsAnalyzing(true)
+    setIsAnalyzing(true);
 
     try {
+      const startTime = Date.now();
       const response = await fetch("/api/analyze-document", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-request-start": startTime.toString(),
         },
         body: JSON.stringify({ documentText }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to analyze document")
+        throw new Error("Failed to analyze document");
       }
 
-      const { analysis } = await response.json()
+      const { object } = await response.json();
 
-      try {
-        const parsedResponse = JSON.parse(analysis)
-        if (parsedResponse.fields && Array.isArray(parsedResponse.fields)) {
-          onFieldsIdentified(parsedResponse.fields)
-          toast({
-            title: "Analysis Complete",
-            description: `Found ${parsedResponse.fields.length} fillable fields`,
-          })
-        } else {
-          throw new Error("Invalid response format")
-        }
-      } catch (parseError) {
-        console.error("Error parsing AI response:", parseError)
+      if (object.fields && Array.isArray(object.fields)) {
+        onFieldsIdentified(object.fields);
         toast({
-          title: "Analysis Error",
-          description: "Failed to parse field analysis results",
-          variant: "destructive",
-        })
+          title: "Analysis Complete",
+          description: `Found ${object.fields.length} fillable fields (${object.metadata.processingTime}ms)`,
+        });
+      } else {
+        throw new Error("Invalid response format");
       }
     } catch (error) {
-      console.error("Error analyzing document:", error)
+      console.error("Error analyzing document:", error);
       toast({
         title: "Analysis Failed",
         description: "Failed to analyze document for fillable fields",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsAnalyzing(false)
+      setIsAnalyzing(false);
     }
-  }
+  }, [documentText, onFieldsIdentified, setIsAnalyzing, toast]);
 
-  const applyPlaceholders = async () => {
+  const handleApplyPlaceholders = useCallback(async () => {
     if (identifiedFields.length === 0) {
       toast({
         title: "No Fields",
         description: "Please analyze the document first to identify fields",
         variant: "destructive",
-      })
-      return
+      });
+      return;
+    }
+
+    if (placeholdersApplied) {
+      toast({
+        title: "Placeholders Already Applied",
+        description: "Placeholders have already been applied to this document",
+        variant: "destructive",
+      });
+      return;
     }
 
     try {
-      // Get the current document content from the editor
-      const documentContainer = document.querySelector(".document-container")
-      if (!documentContainer) return
+      const documentContainer = document.querySelector(".document-container");
+      if (!documentContainer) return;
 
-      let content = documentContainer.innerHTML
+      const content = documentContainer.innerHTML;
+      const updatedContent = applyPlaceholders(content, identifiedFields);
 
-      // Replace identified field content with placeholders
-      identifiedFields.forEach((field) => {
-        // This is a simplified replacement - in a real implementation,
-        // you'd want more sophisticated text matching
-        const patterns = [
-          new RegExp(`\\b${field.name}\\b`, "gi"),
-          /_+/g, // Replace underlines commonly used for fill-in fields
-          /\.{3,}/g, // Replace dots used for fill-in fields
-        ]
-
-        patterns.forEach((pattern) => {
-          content = content.replace(pattern, field.placeholder)
-        })
-      })
-
-      // Update the document content
-      documentContainer.innerHTML = content
+      documentContainer.innerHTML = updatedContent;
+      setPlaceholdersApplied(true);
 
       toast({
         title: "Placeholders Applied",
         description: `Applied ${identifiedFields.length} placeholders to the document`,
-      })
+      });
     } catch (error) {
-      console.error("Error applying placeholders:", error)
+      console.error("Error applying placeholders:", error);
       toast({
         title: "Error",
         description: "Failed to apply placeholders to document",
         variant: "destructive",
-      })
+      });
     }
-  }
+  }, [identifiedFields, placeholdersApplied, toast]);
 
-  const getFieldTypeIcon = (type: string) => {
-    switch (type) {
-      case "date":
-        return "📅"
-      case "email":
-        return "📧"
-      case "phone":
-        return "📞"
-      case "address":
-        return "🏠"
-      case "number":
-        return "🔢"
-      case "checkbox":
-        return "☑️"
-      default:
-        return "📝"
-    }
-  }
+  const getFieldTypeIcon = useCallback((type: string) => {
+    const icons = {
+      date: "📅",
+      email: "📧",
+      phone: "📞",
+      address: "🏠",
+      number: "🔢",
+      checkbox: "☑️",
+      text: "📝",
+    };
+    return icons[type as keyof typeof icons] || icons.text;
+  }, []);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col max-h-[calc(100vh-4rem)]">
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold flex items-center">
           <FileText className="mr-2 h-5 w-5" />
@@ -200,51 +214,89 @@ export default function FieldManager({
 
       <div className="flex-1 overflow-hidden flex flex-col">
         <div className="p-4">
-          <Button onClick={analyzeDocument} disabled={isAnalyzing || !docxContent} className="w-full mb-4">
-            <Search className="mr-2 h-4 w-4" />
-            {isAnalyzing ? "Analyzing Document..." : "Analyze Document"}
+          <Button
+            onClick={analyzeDocument}
+            disabled={isAnalyzing || !docxContent}
+            className="w-full mb-4"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Analyzing Document...
+              </>
+            ) : (
+              <>
+                <Search className="mr-2 h-4 w-4" />
+                Analyze Document
+              </>
+            )}
           </Button>
 
           {identifiedFields.length > 0 && (
-            <Button onClick={applyPlaceholders} variant="outline" className="w-full mb-4">
+            <Button
+              onClick={handleApplyPlaceholders}
+              variant="outline"
+              className="w-full mb-4"
+              disabled={placeholdersApplied}
+            >
               <CheckCircle className="mr-2 h-4 w-4" />
-              Apply Placeholders
+              {placeholdersApplied
+                ? "Placeholders Applied"
+                : "Apply Placeholders"}
             </Button>
           )}
         </div>
 
         <Separator />
 
-        <ScrollArea className="flex-1 p-4">
+        <ScrollArea className="flex-1 p-4 overflow-auto">
           {identifiedFields.length === 0 ? (
             <div className="text-center text-gray-500 mt-8">
               <AlertCircle className="mx-auto h-12 w-12 mb-4 opacity-50" />
               <p>No fields identified yet.</p>
-              <p className="text-sm">Upload a document and click "Analyze Document" to get started.</p>
+              <p className="text-sm">
+                Upload a document and click "Analyze Document" to get started.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
-              <h3 className="font-medium text-sm text-gray-700 mb-3">Identified Fields ({identifiedFields.length})</h3>
+              <h3 className="font-medium text-sm text-gray-700 mb-3">
+                Identified Fields ({identifiedFields.length})
+              </h3>
               {identifiedFields.map((field, index) => (
                 <Card key={index} className="p-3">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center">
-                      <span className="mr-2">{getFieldTypeIcon(field.type)}</span>
-                      <h4 className="font-medium text-sm">{field.name}</h4>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="flex-shrink-0">
+                        {getFieldTypeIcon(field.type)}
+                      </span>
+                      <h4 className="font-medium text-sm truncate">
+                        {field.name}
+                      </h4>
                     </div>
-                    <div className="flex gap-1">
-                      <Badge variant="secondary" className="text-xs">
+                    <div className="flex flex-wrap gap-1">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs whitespace-nowrap"
+                      >
                         {field.type}
                       </Badge>
                       {field.required && (
-                        <Badge variant="destructive" className="text-xs">
+                        <Badge
+                          variant="destructive"
+                          className="text-xs whitespace-nowrap"
+                        >
                           Required
                         </Badge>
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-600 mb-2">{field.description}</p>
-                  <code className="text-xs bg-gray-100 px-2 py-1 rounded">{field.placeholder}</code>
+                  <p className="text-xs text-gray-600 mt-2">
+                    {field.description}
+                  </p>
+                  <code className="text-xs bg-gray-100 px-2 py-1 rounded mt-2 inline-block">
+                    {field.placeholder}
+                  </code>
                 </Card>
               ))}
             </div>
@@ -252,5 +304,5 @@ export default function FieldManager({
         </ScrollArea>
       </div>
     </div>
-  )
+  );
 }
