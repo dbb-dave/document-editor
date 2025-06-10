@@ -12,6 +12,22 @@ export interface DocumentField {
   }
 }
 
+export function cleanUpAgentResponse(rawString: string): string {
+  const rawText = rawString
+    .replace(/^```json\\n/, "")
+    .replace(/\\n```$/, "")
+    .replace(/^```json/, "")
+    .replace(/```$/, "")
+
+  const parsedText = rawText
+    .replace(/\\n/g, "\n")
+    .replace(/\\"/g, '"')
+    .replace(/\\'/g, "'")
+
+  const JSONText = JSON.parse(parsedText)
+  return JSON.stringify(JSONText, null, 2)
+}
+
 export function detectCommonFieldPatterns(text: string): DocumentField[] {
   const fields: DocumentField[] = []
 

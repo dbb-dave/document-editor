@@ -136,25 +136,41 @@ export default function FieldManager({
       const documentContainer = document.querySelector(".document-container")
       if (!documentContainer) return
 
-      let content = documentContainer.innerHTML
+      // TODO: didn't know if I was to improve the actual regex matching or add another Agent call to do it, went with the agent approach but I reckon it could also be done via regex matching, albeit with much complex and stricter rules
 
-      // Replace identified field content with placeholders
-      identifiedFields.forEach((field) => {
-        // This is a simplified replacement - in a real implementation,
-        // you'd want more sophisticated text matching
-        const patterns = [
-          new RegExp(`\\b${field.name}\\b`, "gi"),
-          /_+/g, // Replace underlines commonly used for fill-in fields
-          /\.{3,}/g, // Replace dots used for fill-in fields
-        ]
+      // let content = documentContainer.innerHTML;
 
-        patterns.forEach((pattern) => {
-          content = content.replace(pattern, field.placeholder)
-        })
+      // // Replace identified field content with placeholders
+      // identifiedFields.forEach((field) => {
+      //   // This is a simplified replacement - in a real implementation,
+      //   // you'd want more sophisticated text matching
+      //   const patterns = [
+      //     new RegExp(`\\b${field.name}\\b`, 'gi'),
+      //     /_+/g, // Replace underlines commonly used for fill-in fields
+      //     /\.{3,}/g, // Replace dots used for fill-in fields
+      //   ];
+
+      //   patterns.forEach((pattern) => {
+      //     content = content.replace(pattern, field.placeholder);
+      //   });
+      // });
+      // documentContainer.innerHTML = content;
+
+      const response = await fetch("/api/apply-patterns", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ documentText, fields: identifiedFields }),
       })
 
-      // Update the document content
-      documentContainer.innerHTML = content
+      const { newText } = await response.json()
+
+      const newTextFormatted = newText
+        .replace(/\n/g, "<br>")
+        .replace(/  /g, "&nbsp;&nbsp;")
+
+      documentContainer.innerHTML = newTextFormatted
 
       toast({
         title: "Placeholders Applied",
