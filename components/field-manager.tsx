@@ -23,6 +23,8 @@ export type IdentifiedField = {
   placeholder: string;
   required: boolean;
   replacement: string;
+  confidence: string;
+  relationships: string[];
 };
 
 interface FieldManagerProps {
