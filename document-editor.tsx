@@ -135,10 +135,10 @@ export default function DocumentEditor() {
             <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="fields">Fields</TabsTrigger>
           </TabsList>
-          <TabsContent value="chat" className="flex-1 flex flex-col">
+          <TabsContent value="chat">
             <ChatInterface docxContent={docxContent} fileName={fileName} />
           </TabsContent>
-          <TabsContent value="fields" className="flex-1 flex flex-col">
+          <TabsContent value="fields">
             <FieldManager
               docxContent={docxContent}
               onFieldsIdentified={setIdentifiedFields}
