@@ -114,7 +114,7 @@ export default function DocumentEditor() {
         </main>
       </div>
 
-      <div className="w-96 border-l bg-white overflow-hidden flex flex-col">
+      <div className="w-96 border-l bg-white overflow-y-auto flex flex-col">
         <Tabs defaultValue="chat" className="h-full flex flex-col">
           <TabsList className="mx-4 mt-4">
             <TabsTrigger value="chat">Chat</TabsTrigger>

@@ -15,6 +15,7 @@ interface IdentifiedField {
   description: string
   placeholder: string
   required: boolean
+  text: string
 }
 
 interface FieldManagerProps {
@@ -122,7 +123,7 @@ export default function FieldManager({
   }
 
   const applyPlaceholders = async () => {
-    if (identifiedFields.length === 0) {
+    if (!identifiedFields || identifiedFields.length === 0) {
       toast({
         title: "No Fields",
         description: "Please analyze the document first to identify fields",
@@ -132,29 +133,38 @@ export default function FieldManager({
     }
 
     try {
-      // Get the current document content from the editor
       const documentContainer = document.querySelector(".document-container")
       if (!documentContainer) return
 
-      let content = documentContainer.innerHTML
+      const paragraphs = documentContainer.querySelectorAll('p')
 
-      // Replace identified field content with placeholders
-      identifiedFields.forEach((field) => {
-        // This is a simplified replacement - in a real implementation,
-        // you'd want more sophisticated text matching
-        const patterns = [
-          new RegExp(`\\b${field.name}\\b`, "gi"),
-          /_+/g, // Replace underlines commonly used for fill-in fields
-          /\.{3,}/g, // Replace dots used for fill-in fields
-        ]
+			identifiedFields.forEach((field) => {
+				const label = field.name.replace(/_/g, ' ').toLowerCase();
 
-        patterns.forEach((pattern) => {
-          content = content.replace(pattern, field.placeholder)
-        })
-      })
+				paragraphs.forEach((p) => {
+					const raw = p.textContent?.trim();
+					const text = raw?.toLowerCase();
+					if (!text) return;
 
-      // Update the document content
-      documentContainer.innerHTML = content
+					// ✅ Handle checkboxes: [[PLACEHOLDER]] Label
+					if (field.type === 'checkbox' && text.includes(label)) {
+						const cleanText = raw ? raw.replace('[ ]', '').trim() : '';
+						const displayLabel = getOriginalLabel(cleanText, label);
+						p.innerHTML = `${field.placeholder} ${displayLabel}`;
+						return;
+					}
+
+					// ✅ Handle label: value → replace value with placeholder
+					console.log(text, label, field.text.toLowerCase());
+					if (text.startsWith(label)) {
+						const colonIndex = raw ? raw.indexOf(':') : -1;
+						if (colonIndex !== -1 && raw) {
+							const labelPart = raw.slice(0, colonIndex + 1);
+							p.innerHTML = `${labelPart} ${field.placeholder}`;
+						}
+					}
+				});
+			});
 
       toast({
         title: "Placeholders Applied",
@@ -169,6 +179,15 @@ export default function FieldManager({
       })
     }
   }
+
+	const capitalizeWords = (text: string) =>
+		text.replace(/\b\w/g, (char) => char.toUpperCase());
+
+	const getOriginalLabel = (original: string, label: string) => {
+		const regex = new RegExp(label, 'i');
+		const match = original.match(regex);
+		return match ? match[0] : capitalizeWords(label);
+	};
 
   const getFieldTypeIcon = (type: string) => {
     switch (type) {
